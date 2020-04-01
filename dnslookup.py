@@ -79,9 +79,11 @@ def dns_records(domain):
                 else:
                     dns_data['SPF'] = 'Not Found'
             dns_data.pop('TXT')
-    
-        else:
-            dns_data['TXT']
+
+        elif 'v=spf' in dns_data['TXT']:
+            dns_data['SPF'] = dns_data['TXT'].replace('"', '')
+            dns_data.pop('TXT')
+
     except:
         pass
 
