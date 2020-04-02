@@ -1,12 +1,12 @@
 from dnslookup import dns_records
 from whois_web_scraping import whois
 from httpstatus import httpstatus
+import threading
 import csv
 import os
 from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 def changeValidator(data):
     date = datetime.now()
@@ -129,25 +129,41 @@ def getHTTPStatus(domain):
     return httpstatus(domain)
 
 
-def collector(domains):
-    data = {}
+def collector(domains, data):
     for domain in domains:
         data[domain] = {'WHOIS': getWHOIS(domain)}
         data[domain]['DNS'] = getDNSRecords(domain)
         data[domain]['HTTP Status'] = getHTTPStatus(domain)
-
-    return data
 
 
 if __name__ == '__main__':
     path = os.path.join(BASE_DIR, 'DomainMonitor/domains.csv')
     if os.path.exists(path):
         domains = readCSV()
+        print('File "domains.csv" Loaded Sucessfully')
     else:
         print('File "domains.csv" Not Found')
 
-    # Collect Data
+    threads = len(domains)
+    
+    jobs = []
+    data = {}
+    for i in range(0, threads):
+        thread = threading.Thread(target=collector(domains, data))
+        jobs.append(thread)
+
+    # Start the threads (i.e. calculate the random number lists)
+    for j in jobs:
+        j.start()
+
+    # Ensure all of the threads have finished
+    for j in jobs:
+        j.join()
+
+    print(data)
+
+    """ # Collect Data
     data = collector(domains)
     # Write Data to File
     writeCSV(data)
-    changeValidator(data)
+    changeValidator(data) """
