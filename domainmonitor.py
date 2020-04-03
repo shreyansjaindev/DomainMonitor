@@ -2,15 +2,17 @@ from dnslookup import dns_records
 from whois_web_scraping import whois
 from httpstatus import httpstatus
 from threading import Thread
+import time
 import csv
 import os
 from datetime import datetime, timedelta
-import time
+import operator
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def changeValidator(data):
     date = datetime.now()
+    timestamp = date.strftime("%d-%m-%Y %H:%M:%S")
     today = date.strftime("%d-%m-%Y")
     yesterday = date - timedelta(days=1)
     yesterday = yesterday.strftime("%d-%m-%Y")
@@ -32,6 +34,9 @@ def changeValidator(data):
             if header != None:
                 for row in reader:
                     temp_yesterday.append(row)
+
+        temp_today = sorted(temp_today, key=operator.itemgetter(1))
+        temp_yesterday = sorted(temp_yesterday, key=operator.itemgetter(1))
 
         for idx in range(len(temp_today)):
             try:
@@ -73,7 +78,7 @@ def writeCSV(data):
         print('Output File Creation Successful')
         with open(path, 'a', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["Timestamp", "Domain", "WHOIS", "MX", "A", 'HTTP Status'])
+            writer.writerow(["Timestamp", "Domain", "WHOIS", "MX", "A", "HTTP Status"])
 
     print('File Update Successful')
     with open(path, 'a', newline='') as file:
@@ -129,11 +134,11 @@ def getHTTPStatus(domain):
     return httpstatus(domain)
 
 
-def collector(domains, data):
+def collector(domain, data):
     data[domain] = {'WHOIS': getWHOIS(domain)}
     data[domain]['DNS'] = getDNSRecords(domain)
     data[domain]['HTTP Status'] = getHTTPStatus(domain)
-
+    print(domain + ' Complete')
 
 if __name__ == '__main__':
     path = os.path.join(BASE_DIR, 'DomainMonitor/domains.csv')
@@ -142,13 +147,13 @@ if __name__ == '__main__':
         print('File "domains.csv" Loaded Sucessfully')
     else:
         print('File "domains.csv" Not Found')
-    
+
     jobs = []
     data = {}
     for domain in domains:
-        thread = Thread(target=collector, args=[domain, data])
+        thread = Thread(target=collector, args=[domain.strip(), data])
         jobs.append(thread)
-
+    
     count = 0
     # Start the threads
     for j in jobs:
@@ -156,11 +161,12 @@ if __name__ == '__main__':
             time.sleep(5)
         j.start()
         count += 1
-
+    
     # Ensure all of the threads have finished
     for j in jobs:
         j.join()
 
+    
     # Write Data to File
     writeCSV(data)
     changeValidator(data)
